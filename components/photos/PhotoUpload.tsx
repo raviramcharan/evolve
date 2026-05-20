@@ -67,15 +67,11 @@ export function PhotoUpload({ programId, userId, onSuccess }: PhotoUploadProps) 
 
       if (uploadError) throw uploadError
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('progress-photos')
-        .getPublicUrl(storagePath)
-
       const { error: insertError } = await supabase.from('progress_photos').insert({
         user_id: userId,
         program_id: programId,
         week_number: parseInt(week, 10),
-        photo_url: publicUrl,
+        photo_url: storagePath,
         notes: notes.trim() || null,
         taken_at: new Date().toISOString(),
       })
