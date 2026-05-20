@@ -5,18 +5,20 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createSupabaseClient } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Select'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 import { ArrowLeft } from 'lucide-react'
 
 const today = new Date().toISOString().split('T')[0]
 
 const STEPS = [
-  { field: 'name',           title: "What's your name?",          subtitle: "We'll personalise your experience.",         label: 'Your name',           placeholder: 'e.g. Alex',  type: 'text'   },
-  { field: 'date_of_birth',  title: 'When were you born?',         subtitle: 'Your coach uses this to personalise targets.', label: 'Date of birth',       placeholder: '',           type: 'date'   },
-  { field: 'height_cm',      title: 'How tall are you?',           subtitle: 'Enter your height in centimetres.',          label: 'Height (cm)',         placeholder: 'e.g. 178',   type: 'number' },
-  { field: 'start_weight',   title: 'What do you weigh now?',      subtitle: 'Enter your current weight in kilograms.',    label: 'Current weight (kg)', placeholder: 'e.g. 88.5',  type: 'number' },
-  { field: 'goal_weight',    title: "What's your goal weight?",    subtitle: 'Where do you want to be in 12 weeks?',       label: 'Goal weight (kg)',    placeholder: 'e.g. 80.0',  type: 'number' },
-  { field: 'start_date',     title: 'When do you want to start?',  subtitle: 'Pick the first day of your program.',        label: 'Start date',          placeholder: '',           type: 'date'   },
+  { field: 'name',          title: "What's your name?",         subtitle: "We'll personalise your experience.",          label: 'Your name',           placeholder: 'e.g. Alex', type: 'text',   options: null },
+  { field: 'date_of_birth', title: 'When were you born?',        subtitle: 'Your coach uses this to personalise targets.', label: 'Date of birth',       placeholder: '',          type: 'date',   options: null },
+  { field: 'sex',           title: 'What is your sex?',          subtitle: 'Used to calculate accurate calorie targets.',  label: 'Biological sex',      placeholder: '',          type: 'select', options: [{ value: 'male', label: 'Male' }, { value: 'female', label: 'Female' }, { value: 'other', label: 'Prefer not to say' }] },
+  { field: 'height_cm',     title: 'How tall are you?',          subtitle: 'Enter your height in centimetres.',           label: 'Height (cm)',         placeholder: 'e.g. 178',  type: 'number', options: null },
+  { field: 'start_weight',  title: 'What do you weigh now?',     subtitle: 'Enter your current weight in kilograms.',     label: 'Current weight (kg)', placeholder: 'e.g. 88.5', type: 'number', options: null },
+  { field: 'goal_weight',   title: "What's your goal weight?",   subtitle: 'Where do you want to be in 12 weeks?',        label: 'Goal weight (kg)',    placeholder: 'e.g. 80.0', type: 'number', options: null },
+  { field: 'start_date',    title: 'When do you want to start?', subtitle: 'Pick the first day of your program.',         label: 'Start date',          placeholder: '',          type: 'date',   options: null },
 ] as const
 
 type Field = typeof STEPS[number]['field']
@@ -35,8 +37,8 @@ function OnboardingForm() {
 
   const [step, setStep] = useState(0)
   const [formData, setFormData] = useState<FormData>({
-    name: '', date_of_birth: '', height_cm: '',
-    start_weight: '', goal_weight: '', start_date: today,
+    name: '', date_of_birth: '', sex: 'male',
+    height_cm: '', start_weight: '', goal_weight: '', start_date: today,
   })
   const [coachName, setCoachName] = useState<string | null>(null)
   const [coachId, setCoachId] = useState<string | null>(null)
@@ -86,13 +88,13 @@ function OnboardingForm() {
       role: 'client',
       coach_id: coachId ?? null,
       date_of_birth: formData.date_of_birth,
+      sex: formData.sex,
       height_cm: parseFloat(formData.height_cm),
       updated_at: new Date().toISOString(),
     })
     if (profileErr) { setError(profileErr.message); setLoading(false); return }
 
     const endDate = addDays(formData.start_date, 84)
-
     const { error: programErr } = await supabase.from('programs').insert({
       user_id: user.id,
       title: `${formData.name.trim()}'s 12-Week Program`,
@@ -132,19 +134,34 @@ function OnboardingForm() {
         <h1 className="font-display text-3xl font-bold text-text mb-2">{currentStep.title}</h1>
         <p className="text-muted text-sm mb-8">{currentStep.subtitle}</p>
 
-        <Input
-          label={currentStep.label}
-          type={currentStep.type}
-          placeholder={currentStep.placeholder || (field === 'start_date' ? today : '')}
-          value={formData[field]}
-          onChange={(e) => { setFormData((prev) => ({ ...prev, [field]: e.target.value })); setError('') }}
-          onKeyDown={(e) => e.key === 'Enter' && handleNext()}
-          step={currentStep.type === 'number' ? (field === 'start_weight' || field === 'goal_weight' ? '0.1' : '1') : undefined}
-          min={currentStep.type === 'number' ? '0' : field === 'date_of_birth' ? undefined : undefined}
-          max={field === 'date_of_birth' ? today : undefined}
-          autoFocus
-          error={error}
-        />
+        {currentStep.type === 'select' && currentStep.options ? (
+          <Select
+            label={currentStep.label}
+            value={formData[field]}
+            onChange={(e) => { setFormData((prev) => ({ ...prev, [field]: e.target.value })); setError('') }}
+            options={[...currentStep.options] as { value: string; label: string }[]}
+          />
+        ) : (
+          <Input
+            label={currentStep.label}
+            type={currentStep.type}
+            placeholder={currentStep.placeholder || (field === 'start_date' ? today : '')}
+            value={formData[field]}
+            onChange={(e) => { setFormData((prev) => ({ ...prev, [field]: e.target.value })); setError('') }}
+            onKeyDown={(e) => e.key === 'Enter' && handleNext()}
+            step={currentStep.type === 'number'
+              ? (field === 'start_weight' || field === 'goal_weight' ? '0.1' : '1')
+              : undefined}
+            min={currentStep.type === 'number' ? '0' : undefined}
+            max={field === 'date_of_birth' ? today : undefined}
+            autoFocus
+            error={error}
+          />
+        )}
+
+        {error && currentStep.type === 'select' && (
+          <p className="text-sm text-danger mt-2">{error}</p>
+        )}
 
         <Button fullWidth onClick={handleNext} disabled={loading} className="mt-6">
           {loading ? 'Setting up your profile...' : step === STEPS.length - 1 ? 'Finish' : 'Continue'}

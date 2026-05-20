@@ -16,6 +16,7 @@ interface ClientProfile {
   name: string
   date_of_birth: string | null
   height_cm: number | null
+  sex: string | null
 }
 
 interface ProgramForm {
@@ -68,13 +69,13 @@ export default function CoachClientProgramPage() {
 
       const { data: clientData } = await supabase
         .from('users')
-        .select('name, date_of_birth, height_cm')
+        .select('name, date_of_birth, height_cm, sex')
         .eq('id', clientId)
         .eq('coach_id', user.id)
         .maybeSingle()
 
       if (!clientData) { router.push('/coach/clients'); return }
-      setClient({ name: clientData.name ?? 'Client', date_of_birth: clientData.date_of_birth, height_cm: clientData.height_cm })
+      setClient({ name: clientData.name ?? 'Client', date_of_birth: clientData.date_of_birth, height_cm: clientData.height_cm, sex: clientData.sex })
 
       const { data: prog } = await supabase
         .from('programs')
@@ -196,6 +197,12 @@ export default function CoachClientProgramPage() {
                 <>
                   <span className="text-muted">Age</span>
                   <span className="text-text font-medium text-right">{calcAge(client.date_of_birth)} yrs</span>
+                </>
+              )}
+              {client.sex && (
+                <>
+                  <span className="text-muted">Sex</span>
+                  <span className="text-text font-medium text-right capitalize">{client.sex}</span>
                 </>
               )}
               {client.height_cm && (

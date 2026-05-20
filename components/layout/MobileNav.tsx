@@ -2,14 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, PlusCircle, TrendingUp, Camera, Settings } from 'lucide-react'
+import { LayoutDashboard, ClipboardCheck, Dumbbell, Utensils, TrendingUp } from 'lucide-react'
 
 const tabs = [
-  { href: '/dashboard', label: 'Dashboard', icon: Home },
-  { href: '/check-in', label: 'Check-in', icon: PlusCircle },
+  { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
+  { href: '/check-in', label: 'Check-in', icon: ClipboardCheck },
+  { href: '/training', label: 'Training', icon: Dumbbell },
+  { href: '/nutrition', label: 'Nutrition', icon: Utensils },
   { href: '/progress', label: 'Progress', icon: TrendingUp },
-  { href: '/photos', label: 'Photos', icon: Camera },
-  { href: '/settings', label: 'Settings', icon: Settings },
 ]
 
 const HIDDEN_ON = ['/login', '/onboarding', '/signup', '/coach']

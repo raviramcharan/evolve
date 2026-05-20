@@ -8,6 +8,7 @@ export interface User {
   google_id: string | null;
   date_of_birth: string | null;
   height_cm: number | null;
+  sex: 'male' | 'female' | 'other' | null;
   created_at: string;
   updated_at: string;
 }
@@ -101,4 +102,76 @@ export interface GoalAdjustment {
   created_at: string;
 }
 
-export type TrackingStatus = 'on_track' | 'ahead' | 'behind';
+export type TrackingStatus = 'on_track' | 'ahead' | 'behind'
+
+export interface TrainingPlan {
+  id: string
+  client_id: string
+  program_id: string
+  coach_id: string
+  title: string
+  notes: string | null
+  created_at: string
+  updated_at: string
+  days?: TrainingDay[]
+}
+
+export interface TrainingDay {
+  id: string
+  training_plan_id: string
+  day_of_week: number
+  is_rest_day: boolean
+  workout_name: string | null
+  notes: string | null
+  exercises?: TrainingExercise[]
+}
+
+export interface TrainingExercise {
+  id: string
+  training_day_id: string
+  position: number
+  name: string
+  sets: number
+  reps: string
+  weight_kg: number | null
+  rest_seconds: number | null
+  notes: string | null
+}
+
+export interface NutritionPlan {
+  id: string
+  client_id: string
+  program_id: string
+  coach_id: string
+  title: string
+  calorie_target: number
+  protein_target: number
+  carb_target: number
+  fat_target: number
+  notes: string | null
+  created_at: string
+  updated_at: string
+  meals?: Meal[]
+}
+
+export interface Meal {
+  id: string
+  nutrition_plan_id: string
+  position: number
+  name: string
+  time_of_day: string | null
+  foods?: MealFood[]
+}
+
+export interface MealFood {
+  id: string
+  meal_id: string
+  position: number
+  name: string
+  quantity: number
+  unit: 'g' | 'ml' | 'piece' | 'scoop' | 'tbsp' | 'tsp' | 'cup'
+  calories: number
+  protein_g: number
+  carbs_g: number
+  fat_g: number
+};

@@ -9,7 +9,7 @@ import { CheckInSummary } from '@/components/check-in/CheckInSummary'
 import { habitScore, getCurrentWeek, isOnTrack, projectedWeights } from '@/lib/calculations'
 import { formatDate, weekLabel } from '@/lib/formatters'
 import { CheckIn, Program } from '@/types'
-import { FileText, ClipboardList, StickyNote, Target } from 'lucide-react'
+import { FileText, ClipboardList, StickyNote, Target, Dumbbell, Utensils } from 'lucide-react'
 
 interface Props { params: { id: string } }
 
@@ -56,6 +56,8 @@ export default async function CoachClientDetailPage({ params }: Props) {
     { href: `/coach/clients/${client.id}/checkins`, icon: ClipboardList, label: 'Check-ins', count: allCheckIns.length },
     { href: `/coach/clients/${client.id}/notes`, icon: StickyNote, label: 'Notes', count: null },
     { href: `/coach/clients/${client.id}/program`, icon: Target, label: 'Program', count: null },
+    { href: `/coach/clients/${client.id}/training`, icon: Dumbbell, label: 'Training', count: null },
+    { href: `/coach/clients/${client.id}/nutrition`, icon: Utensils, label: 'Nutrition', count: null },
   ]
 
   return (
@@ -97,7 +99,7 @@ export default async function CoachClientDetailPage({ params }: Props) {
         </Card>
 
         {/* Quick nav */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
           {NAV_LINKS.map(({ href, icon: Icon, label, count }) => (
             <Link
               key={href}

@@ -6,36 +6,55 @@ import { createSupabaseClient } from '@/lib/supabase'
 import { formatDate, weekLabel } from '@/lib/formatters'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Select'
 import { Card } from '@/components/ui/Card'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { Header } from '@/components/layout/Header'
 import { Program, CoachNote } from '@/types'
 
-interface UserProfile {
-  name: string | null
-  reminder_email: string | null
-  coach_id: string | null
+interface ProfileForm {
+  name: string
+  reminder_email: string
+  date_of_birth: string
+  sex: string
+  height_cm: string
+}
+
+interface ProgramForm {
+  goal_weight: string
 }
 
 interface CoachInfo {
   name: string | null
   email: string
-  coach_code: string
 }
+
+const SEX_OPTIONS = [
+  { value: '', label: 'Select...' },
+  { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
+  { value: 'other', label: 'Prefer not to say' },
+]
 
 export default function SettingsPage() {
   const router = useRouter()
-  const [profile, setProfile] = useState<UserProfile>({ name: '', reminder_email: '', coach_id: null })
+
+  const [profileForm, setProfileForm] = useState<ProfileForm>({
+    name: '', reminder_email: '', date_of_birth: '', sex: '', height_cm: '',
+  })
+  const [programForm, setProgramForm] = useState<ProgramForm>({ goal_weight: '' })
   const [program, setProgram] = useState<Program | null>(null)
   const [coachInfo, setCoachInfo] = useState<CoachInfo | null>(null)
   const [coachNotes, setCoachNotes] = useState<CoachNote[]>([])
-  const [form, setForm] = useState({ name: '', reminder_email: '' })
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [savingGoal, setSavingGoal] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const [newProgram, setNewProgram] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+  const [profileError, setProfileError] = useState('')
+  const [profileSuccess, setProfileSuccess] = useState('')
+  const [goalError, setGoalError] = useState('')
+  const [goalSuccess, setGoalSuccess] = useState('')
 
   useEffect(() => {
     async function fetchData() {
@@ -45,7 +64,7 @@ export default function SettingsPage() {
 
       const { data: userData } = await supabase
         .from('users')
-        .select('name, reminder_email, coach_id')
+        .select('name, reminder_email, coach_id, date_of_birth, sex, height_cm')
         .eq('id', user.id)
         .maybeSingle()
 
@@ -56,16 +75,18 @@ export default function SettingsPage() {
         .eq('is_active', true)
         .maybeSingle()
 
-      const p: UserProfile = {
-        name: userData?.name ?? null,
-        reminder_email: userData?.reminder_email ?? null,
-        coach_id: userData?.coach_id ?? null,
-      }
-      setProfile(p)
-      setForm({ name: p.name ?? '', reminder_email: p.reminder_email ?? '' })
-      setProgram(programData as Program ?? null)
+      setProfileForm({
+        name: userData?.name ?? '',
+        reminder_email: userData?.reminder_email ?? '',
+        date_of_birth: userData?.date_of_birth ?? '',
+        sex: userData?.sex ?? '',
+        height_cm: userData?.height_cm?.toString() ?? '',
+      })
 
-      // Fetch coach info and notes if client has a coach
+      const prog = programData as Program ?? null
+      setProgram(prog)
+      setProgramForm({ goal_weight: prog?.goal_weight?.toString() ?? '' })
+
       if (userData?.coach_id) {
         const { data: coachUser } = await supabase
           .from('users')
@@ -73,15 +94,7 @@ export default function SettingsPage() {
           .eq('id', userData.coach_id)
           .maybeSingle()
 
-        const { data: coachRecord } = await supabase
-          .from('coaches')
-          .select('coach_code')
-          .eq('id', userData.coach_id)
-          .maybeSingle()
-
-        if (coachUser) {
-          setCoachInfo({ name: coachUser.name, email: coachUser.email, coach_code: coachRecord?.coach_code ?? '' })
-        }
+        if (coachUser) setCoachInfo({ name: coachUser.name, email: coachUser.email })
 
         const { data: notes } = await supabase
           .from('coach_notes')
@@ -98,24 +111,47 @@ export default function SettingsPage() {
   }, [router])
 
   async function handleSaveProfile() {
-    setSaving(true)
-    setError('')
-    setSuccess('')
+    setSavingProfile(true)
+    setProfileError('')
+    setProfileSuccess('')
     const supabase = createSupabaseClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setSaving(false); return }
+    if (!user) { setSavingProfile(false); return }
 
-    const { error: updateError } = await supabase.from('users').upsert({
+    const { error } = await supabase.from('users').upsert({
       id: user.id,
       email: user.email!,
-      name: form.name.trim() || null,
-      reminder_email: form.reminder_email.trim() || null,
+      name: profileForm.name.trim() || null,
+      reminder_email: profileForm.reminder_email.trim() || null,
+      date_of_birth: profileForm.date_of_birth || null,
+      sex: profileForm.sex || null,
+      height_cm: profileForm.height_cm ? parseFloat(profileForm.height_cm) : null,
       updated_at: new Date().toISOString(),
     })
 
-    if (updateError) { setError(updateError.message) }
-    else { setSuccess('Profile updated.') }
-    setSaving(false)
+    if (error) setProfileError(error.message)
+    else setProfileSuccess('Profile saved.')
+    setSavingProfile(false)
+  }
+
+  async function handleSaveGoal() {
+    if (!program || !programForm.goal_weight) return
+    setSavingGoal(true)
+    setGoalError('')
+    setGoalSuccess('')
+    const supabase = createSupabaseClient()
+
+    const { error } = await supabase
+      .from('programs')
+      .update({ goal_weight: parseFloat(programForm.goal_weight), updated_at: new Date().toISOString() })
+      .eq('id', program.id)
+
+    if (error) setGoalError(error.message)
+    else {
+      setProgram((p) => p ? { ...p, goal_weight: parseFloat(programForm.goal_weight) } : p)
+      setGoalSuccess('Goal weight updated.')
+    }
+    setSavingGoal(false)
   }
 
   async function handleNewProgram() {
@@ -123,7 +159,6 @@ export default function SettingsPage() {
     const supabase = createSupabaseClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user || !program) { setNewProgram(false); return }
-
     await supabase.from('programs').update({ is_active: false, updated_at: new Date().toISOString() }).eq('id', program.id)
     router.push('/onboarding')
   }
@@ -134,6 +169,8 @@ export default function SettingsPage() {
     await supabase.auth.signOut()
     router.push('/login')
   }
+
+  const today = new Date().toISOString().split('T')[0]
 
   if (loading) {
     return (
@@ -151,23 +188,82 @@ export default function SettingsPage() {
       <Header title="Settings" />
       <div className="px-4 py-5 flex flex-col gap-6">
 
-        {/* Profile */}
+        {/* Personal info */}
         <div>
-          <SectionHeader title="Profile" />
+          <SectionHeader title="My Info" />
           <Card>
             <div className="flex flex-col gap-4">
-              <Input label="Display name" type="text" placeholder="Your name" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
-              <Input label="Reminder email" type="email" placeholder="you@example.com" value={form.reminder_email} onChange={(e) => setForm((p) => ({ ...p, reminder_email: e.target.value }))} inputMode="email" />
+              <Input
+                label="Name"
+                type="text"
+                placeholder="Your name"
+                value={profileForm.name}
+                onChange={(e) => setProfileForm((p) => ({ ...p, name: e.target.value }))}
+              />
+              <Input
+                label="Date of birth"
+                type="date"
+                value={profileForm.date_of_birth}
+                max={today}
+                onChange={(e) => setProfileForm((p) => ({ ...p, date_of_birth: e.target.value }))}
+              />
+              <Select
+                label="Biological sex"
+                value={profileForm.sex}
+                onChange={(e) => setProfileForm((p) => ({ ...p, sex: e.target.value }))}
+                options={SEX_OPTIONS}
+              />
+              <Input
+                label="Height (cm)"
+                type="number"
+                placeholder="e.g. 178"
+                value={profileForm.height_cm}
+                inputMode="numeric"
+                min="0"
+                onChange={(e) => setProfileForm((p) => ({ ...p, height_cm: e.target.value }))}
+              />
+              <Input
+                label="Reminder email"
+                type="email"
+                placeholder="you@example.com"
+                value={profileForm.reminder_email}
+                inputMode="email"
+                onChange={(e) => setProfileForm((p) => ({ ...p, reminder_email: e.target.value }))}
+              />
             </div>
-            {error && <div className="bg-danger/10 border border-danger/30 rounded-xl px-4 py-3 mt-4"><p className="text-sm text-danger">{error}</p></div>}
-            {success && <div className="bg-success/10 border border-success/30 rounded-xl px-4 py-3 mt-4"><p className="text-sm text-success">{success}</p></div>}
-            <Button fullWidth onClick={handleSaveProfile} disabled={saving} className="mt-4">
-              {saving ? 'Saving...' : 'Save Profile'}
+            {profileError && <div className="bg-danger/10 border border-danger/30 rounded-xl px-4 py-3 mt-4"><p className="text-sm text-danger">{profileError}</p></div>}
+            {profileSuccess && <div className="bg-success/10 border border-success/30 rounded-xl px-4 py-3 mt-4"><p className="text-sm text-success">{profileSuccess}</p></div>}
+            <Button fullWidth onClick={handleSaveProfile} disabled={savingProfile} className="mt-4">
+              {savingProfile ? 'Saving...' : 'Save Info'}
             </Button>
           </Card>
         </div>
 
-        {/* Coach info */}
+        {/* Goal weight */}
+        {program && (
+          <div>
+            <SectionHeader title="Goal" />
+            <Card>
+              <Input
+                label="Goal weight (kg)"
+                type="number"
+                step="0.1"
+                placeholder="e.g. 80.0"
+                value={programForm.goal_weight}
+                inputMode="decimal"
+                min="0"
+                onChange={(e) => setProgramForm({ goal_weight: e.target.value })}
+              />
+              {goalError && <div className="bg-danger/10 border border-danger/30 rounded-xl px-4 py-3 mt-4"><p className="text-sm text-danger">{goalError}</p></div>}
+              {goalSuccess && <div className="bg-success/10 border border-success/30 rounded-xl px-4 py-3 mt-4"><p className="text-sm text-success">{goalSuccess}</p></div>}
+              <Button fullWidth onClick={handleSaveGoal} disabled={savingGoal || !programForm.goal_weight} className="mt-4">
+                {savingGoal ? 'Saving...' : 'Update Goal Weight'}
+              </Button>
+            </Card>
+          </div>
+        )}
+
+        {/* Coach */}
         {coachInfo && (
           <div>
             <SectionHeader title="Your Coach" />
@@ -196,7 +292,7 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* Active program */}
+        {/* Active program info */}
         {program && (
           <div>
             <SectionHeader title="Active Program" />
@@ -207,7 +303,9 @@ export default function SettingsPage() {
                   ['Start date', formatDate(program.start_date)],
                   ['End date', formatDate(program.end_date)],
                   ['Start weight', `${program.start_weight} kg`],
-                  ['Goal weight', `${program.goal_weight} kg`],
+                  ...(program.calorie_target ? [['Calories', `${program.calorie_target} kcal/day`]] : []),
+                  ...(program.protein_target ? [['Protein', `${program.protein_target} g/day`]] : []),
+                  ...(program.workout_target ? [['Workouts', `${program.workout_target}x/week`]] : []),
                 ].map(([label, value]) => (
                   <div key={label} className="flex items-center justify-between">
                     <span className="text-sm text-muted">{label}</span>
@@ -215,6 +313,9 @@ export default function SettingsPage() {
                   </div>
                 ))}
               </div>
+              {!program.calorie_target && (
+                <p className="text-xs text-muted italic mb-3">Your coach hasn't set targets yet.</p>
+              )}
               <Button variant="ghost" fullWidth onClick={handleNewProgram} disabled={newProgram}>
                 {newProgram ? 'Starting new program...' : 'Start New Program'}
               </Button>
@@ -231,6 +332,7 @@ export default function SettingsPage() {
             </Button>
           </Card>
         </div>
+
       </div>
     </div>
   )
