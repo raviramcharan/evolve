@@ -35,7 +35,9 @@ export default async function PhotosPage() {
       <Header title="Progress Photos" />
       <div className="px-4 py-5">
         <div className="flex items-center justify-between mb-5">
-          <p className="text-sm text-muted">{allPhotos.length} photo{allPhotos.length !== 1 ? 's' : ''}</p>
+          <p className="text-sm text-muted">
+            {allPhotos.length} photo{allPhotos.length !== 1 ? 's' : ''}
+          </p>
           <Link href="/photos/upload">
             <Button className="flex items-center gap-2 text-sm py-2.5 px-4">
               <Upload size={16} />
