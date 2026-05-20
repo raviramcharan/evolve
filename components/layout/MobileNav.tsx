@@ -12,10 +12,12 @@ const tabs = [
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
 
+const HIDDEN_ON = ['/login', '/onboarding', '/signup', '/coach']
+
 export function MobileNav() {
   const pathname = usePathname()
 
-  const isHidden = pathname === '/login' || pathname === '/onboarding'
+  const isHidden = HIDDEN_ON.some((p) => pathname === p || pathname.startsWith(p + '/') || pathname.startsWith(p + '?'))
   if (isHidden) return null
 
   return (
