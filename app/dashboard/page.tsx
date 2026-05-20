@@ -129,7 +129,11 @@ export default async function DashboardPage() {
                 <div className="text-center">
                   <p className="text-xs text-muted">Workouts</p>
                   <p className="text-sm font-semibold text-text mt-0.5">
-                    {latestCheckIn.workouts_completed !== null ? `${latestCheckIn.workouts_completed}/${typedProgram.workout_target}` : '—'}
+                    {latestCheckIn.workouts_completed !== null
+                      ? typedProgram.workout_target !== null
+                        ? `${latestCheckIn.workouts_completed}/${typedProgram.workout_target}`
+                        : `${latestCheckIn.workouts_completed}`
+                      : '—'}
                   </p>
                 </div>
                 <div className="text-center">

@@ -8,20 +8,25 @@ import { Input } from '@/components/ui/Input'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 import { ArrowLeft } from 'lucide-react'
 
+const today = new Date().toISOString().split('T')[0]
+
 const STEPS = [
-  { field: 'name',           title: "What's your name?",              subtitle: "We'll personalise your experience.",              label: 'Your name',           placeholder: 'e.g. Alex',  type: 'text'   },
-  { field: 'start_weight',   title: 'What do you weigh now?',         subtitle: 'Enter your current weight in kilograms.',         label: 'Current weight (kg)', placeholder: 'e.g. 88.5', type: 'number' },
-  { field: 'goal_weight',    title: "What's your goal weight?",       subtitle: 'Where do you want to be in 12 weeks?',            label: 'Goal weight (kg)',    placeholder: 'e.g. 80.0', type: 'number' },
-  { field: 'start_date',     title: 'When do you want to start?',     subtitle: 'Pick the first day of your program.',             label: 'Start date',          placeholder: '',           type: 'date'   },
-  { field: 'calorie_target', title: "What's your daily calorie target?", subtitle: 'Your nutrition goal each day.',               label: 'Daily calories (kcal)',placeholder: 'e.g. 1900', type: 'number' },
-  { field: 'protein_target', title: "What's your daily protein target?", subtitle: 'Key for retaining muscle while losing fat.',  label: 'Daily protein (g)',   placeholder: 'e.g. 150',  type: 'number' },
-  { field: 'workout_target', title: 'How many workouts per week?',    subtitle: 'Set a realistic training frequency.',             label: 'Workouts per week',   placeholder: 'e.g. 4',    type: 'number' },
+  { field: 'name',           title: "What's your name?",          subtitle: "We'll personalise your experience.",         label: 'Your name',           placeholder: 'e.g. Alex',  type: 'text'   },
+  { field: 'date_of_birth',  title: 'When were you born?',         subtitle: 'Your coach uses this to personalise targets.', label: 'Date of birth',       placeholder: '',           type: 'date'   },
+  { field: 'height_cm',      title: 'How tall are you?',           subtitle: 'Enter your height in centimetres.',          label: 'Height (cm)',         placeholder: 'e.g. 178',   type: 'number' },
+  { field: 'start_weight',   title: 'What do you weigh now?',      subtitle: 'Enter your current weight in kilograms.',    label: 'Current weight (kg)', placeholder: 'e.g. 88.5',  type: 'number' },
+  { field: 'goal_weight',    title: "What's your goal weight?",    subtitle: 'Where do you want to be in 12 weeks?',       label: 'Goal weight (kg)',    placeholder: 'e.g. 80.0',  type: 'number' },
+  { field: 'start_date',     title: 'When do you want to start?',  subtitle: 'Pick the first day of your program.',        label: 'Start date',          placeholder: '',           type: 'date'   },
 ] as const
 
 type Field = typeof STEPS[number]['field']
 type FormData = Record<Field, string>
 
-const today = new Date().toISOString().split('T')[0]
+function addDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr)
+  d.setDate(d.getDate() + days)
+  return d.toISOString().split('T')[0]
+}
 
 function OnboardingForm() {
   const router = useRouter()
@@ -30,8 +35,8 @@ function OnboardingForm() {
 
   const [step, setStep] = useState(0)
   const [formData, setFormData] = useState<FormData>({
-    name: '', start_weight: '', goal_weight: '',
-    start_date: today, calorie_target: '', protein_target: '', workout_target: '',
+    name: '', date_of_birth: '', height_cm: '',
+    start_weight: '', goal_weight: '', start_date: today,
   })
   const [coachName, setCoachName] = useState<string | null>(null)
   const [coachId, setCoachId] = useState<string | null>(null)
@@ -80,19 +85,21 @@ function OnboardingForm() {
       name: formData.name.trim(),
       role: 'client',
       coach_id: coachId ?? null,
+      date_of_birth: formData.date_of_birth,
+      height_cm: parseFloat(formData.height_cm),
       updated_at: new Date().toISOString(),
     })
     if (profileErr) { setError(profileErr.message); setLoading(false); return }
+
+    const endDate = addDays(formData.start_date, 84)
 
     const { error: programErr } = await supabase.from('programs').insert({
       user_id: user.id,
       title: `${formData.name.trim()}'s 12-Week Program`,
       start_date: formData.start_date,
+      end_date: endDate,
       start_weight: parseFloat(formData.start_weight),
       goal_weight: parseFloat(formData.goal_weight),
-      calorie_target: parseInt(formData.calorie_target, 10),
-      protein_target: parseInt(formData.protein_target, 10),
-      workout_target: parseInt(formData.workout_target, 10),
       is_active: true,
       created_by: 'client',
     })
@@ -133,13 +140,14 @@ function OnboardingForm() {
           onChange={(e) => { setFormData((prev) => ({ ...prev, [field]: e.target.value })); setError('') }}
           onKeyDown={(e) => e.key === 'Enter' && handleNext()}
           step={currentStep.type === 'number' ? (field === 'start_weight' || field === 'goal_weight' ? '0.1' : '1') : undefined}
-          min={currentStep.type === 'number' ? '0' : undefined}
+          min={currentStep.type === 'number' ? '0' : field === 'date_of_birth' ? undefined : undefined}
+          max={field === 'date_of_birth' ? today : undefined}
           autoFocus
           error={error}
         />
 
         <Button fullWidth onClick={handleNext} disabled={loading} className="mt-6">
-          {loading ? 'Setting up your program...' : step === STEPS.length - 1 ? 'Start My Program' : 'Continue'}
+          {loading ? 'Setting up your profile...' : step === STEPS.length - 1 ? 'Finish' : 'Continue'}
         </Button>
       </div>
     </div>

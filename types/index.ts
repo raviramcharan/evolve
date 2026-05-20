@@ -6,6 +6,8 @@ export interface User {
   role: 'coach' | 'client';
   coach_id: string | null;
   google_id: string | null;
+  date_of_birth: string | null;
+  height_cm: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -36,9 +38,9 @@ export interface Program {
   end_date: string;
   start_weight: number;
   goal_weight: number;
-  calorie_target: number;
-  protein_target: number;
-  workout_target: number;
+  calorie_target: number | null;
+  protein_target: number | null;
+  workout_target: number | null;
   is_active: boolean;
   created_by: 'client' | 'coach';
   created_at: string;

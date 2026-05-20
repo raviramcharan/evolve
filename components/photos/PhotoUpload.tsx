@@ -13,15 +13,18 @@ interface PhotoUploadProps {
   onSuccess: () => void
 }
 
-const WEEK_OPTIONS = Array.from({ length: 12 }, (_, i) => ({
-  value: String(i + 1),
-  label: `Week ${i + 1}`,
-}))
+const WEEK_OPTIONS = [
+  { value: '0', label: 'Week 0 — Before' },
+  ...Array.from({ length: 12 }, (_, i) => ({
+    value: String(i + 1),
+    label: `Week ${i + 1}`,
+  })),
+]
 
 export function PhotoUpload({ programId, userId, onSuccess }: PhotoUploadProps) {
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
-  const [week, setWeek] = useState('1')
+  const [week, setWeek] = useState('0')
   const [notes, setNotes] = useState('')
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')

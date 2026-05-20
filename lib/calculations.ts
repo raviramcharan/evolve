@@ -22,7 +22,7 @@ export function habitScore(checkIn: CheckIn, program: Program): number {
   else if (checkIn.hit_calorie_target === 'mostly') score += 15;
   if (checkIn.hit_protein_target === 'yes') score += 20;
   else if (checkIn.hit_protein_target === 'mostly') score += 12;
-  if (checkIn.workouts_completed !== null) {
+  if (checkIn.workouts_completed !== null && program.workout_target !== null) {
     const ratio = checkIn.workouts_completed / program.workout_target;
     score += Math.min(25, Math.round(ratio * 25));
   }

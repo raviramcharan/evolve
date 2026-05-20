@@ -12,6 +12,12 @@ import { Program } from '@/types'
 import { formatDate } from '@/lib/formatters'
 import { getCurrentWeek } from '@/lib/calculations'
 
+interface ClientProfile {
+  name: string
+  date_of_birth: string | null
+  height_cm: number | null
+}
+
 interface ProgramForm {
   start_date: string
   start_weight: string
@@ -23,12 +29,22 @@ interface ProgramForm {
 
 const today = new Date().toISOString().split('T')[0]
 
+function addDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr)
+  d.setDate(d.getDate() + days)
+  return d.toISOString().split('T')[0]
+}
+
+function calcAge(dob: string): number {
+  return Math.floor((Date.now() - new Date(dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+}
+
 export default function CoachClientProgramPage() {
   const params = useParams()
   const router = useRouter()
   const clientId = params.id as string
 
-  const [clientName, setClientName] = useState('')
+  const [client, setClient] = useState<ClientProfile | null>(null)
   const [program, setProgram] = useState<Program | null>(null)
   const [form, setForm] = useState<ProgramForm>({
     start_date: today,
@@ -50,15 +66,15 @@ export default function CoachClientProgramPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
 
-      const { data: client } = await supabase
+      const { data: clientData } = await supabase
         .from('users')
-        .select('name')
+        .select('name, date_of_birth, height_cm')
         .eq('id', clientId)
         .eq('coach_id', user.id)
         .maybeSingle()
 
-      if (!client) { router.push('/coach/clients'); return }
-      setClientName(client.name ?? 'Client')
+      if (!clientData) { router.push('/coach/clients'); return }
+      setClient({ name: clientData.name ?? 'Client', date_of_birth: clientData.date_of_birth, height_cm: clientData.height_cm })
 
       const { data: prog } = await supabase
         .from('programs')
@@ -74,9 +90,9 @@ export default function CoachClientProgramPage() {
           start_date: p.start_date,
           start_weight: p.start_weight.toString(),
           goal_weight: p.goal_weight.toString(),
-          calorie_target: p.calorie_target.toString(),
-          protein_target: p.protein_target.toString(),
-          workout_target: p.workout_target.toString(),
+          calorie_target: p.calorie_target?.toString() ?? '',
+          protein_target: p.protein_target?.toString() ?? '',
+          workout_target: p.workout_target?.toString() ?? '',
         })
       }
       setLoading(false)
@@ -105,7 +121,6 @@ export default function CoachClientProgramPage() {
     if (!user) return
 
     if (program) {
-      // Update existing program
       const { error: updateErr } = await supabase
         .from('programs')
         .update({
@@ -119,7 +134,6 @@ export default function CoachClientProgramPage() {
 
       if (updateErr) { setError(updateErr.message); setSaving(false); return }
 
-      // Log adjustment
       const currentWeek = getCurrentWeek(program.start_date)
       await supabase.from('goal_adjustments').insert({
         user_id: clientId,
@@ -135,11 +149,12 @@ export default function CoachClientProgramPage() {
 
       setSuccess('Program updated successfully.')
     } else {
-      // Create new program for client
+      const endDate = addDays(start_date, 84)
       const { error: insertErr } = await supabase.from('programs').insert({
         user_id: clientId,
-        title: `${clientName}'s 12-Week Program`,
+        title: `${client?.name ?? 'Client'}'s 12-Week Program`,
         start_date,
+        end_date: endDate,
         start_weight: parseFloat(start_weight),
         goal_weight: parseFloat(goal_weight),
         calorie_target: parseInt(calorie_target, 10),
@@ -171,6 +186,36 @@ export default function CoachClientProgramPage() {
     <div>
       <Header showBack title={program ? 'Edit Program' : 'Create Program'} />
       <div className="px-4 py-5 flex flex-col gap-5">
+
+        {/* Client profile — context for setting targets */}
+        {client && (
+          <Card>
+            <p className="text-xs text-muted font-medium uppercase tracking-wide mb-3">Client Profile</p>
+            <div className="grid grid-cols-2 gap-y-2 text-sm">
+              {client.date_of_birth && (
+                <>
+                  <span className="text-muted">Age</span>
+                  <span className="text-text font-medium text-right">{calcAge(client.date_of_birth)} yrs</span>
+                </>
+              )}
+              {client.height_cm && (
+                <>
+                  <span className="text-muted">Height</span>
+                  <span className="text-text font-medium text-right">{client.height_cm} cm</span>
+                </>
+              )}
+              {program && (
+                <>
+                  <span className="text-muted">Start weight</span>
+                  <span className="text-text font-medium text-right">{program.start_weight} kg</span>
+                  <span className="text-muted">Goal weight</span>
+                  <span className="text-text font-medium text-right">{program.goal_weight} kg</span>
+                </>
+              )}
+            </div>
+          </Card>
+        )}
+
         {program && (
           <Card>
             <div className="flex items-center justify-between text-sm">
@@ -189,16 +234,19 @@ export default function CoachClientProgramPage() {
         )}
 
         <div>
-          <SectionHeader title="Targets" subtitle={program ? 'Adjust targets for this client' : 'Set up a new program'} />
+          <SectionHeader title="Targets" subtitle={program ? 'Adjust targets for this client' : 'Set up targets for this client'} />
           <Card>
             <div className="flex flex-col gap-4">
               {!program && (
                 <>
                   <Input label="Start date" type="date" value={form.start_date} onChange={(e) => update('start_date', e.target.value)} />
                   <Input label="Start weight (kg)" type="number" step="0.1" placeholder="e.g. 88.5" value={form.start_weight} onChange={(e) => update('start_weight', e.target.value)} inputMode="decimal" />
+                  <Input label="Goal weight (kg)" type="number" step="0.1" placeholder="e.g. 80.0" value={form.goal_weight} onChange={(e) => update('goal_weight', e.target.value)} inputMode="decimal" />
                 </>
               )}
-              <Input label="Goal weight (kg)" type="number" step="0.1" placeholder="e.g. 80.0" value={form.goal_weight} onChange={(e) => update('goal_weight', e.target.value)} inputMode="decimal" />
+              {program && (
+                <Input label="Goal weight (kg)" type="number" step="0.1" placeholder="e.g. 80.0" value={form.goal_weight} onChange={(e) => update('goal_weight', e.target.value)} inputMode="decimal" />
+              )}
               <Input label="Daily calories (kcal)" type="number" placeholder="e.g. 1900" value={form.calorie_target} onChange={(e) => update('calorie_target', e.target.value)} inputMode="numeric" />
               <Input label="Daily protein (g)" type="number" placeholder="e.g. 150" value={form.protein_target} onChange={(e) => update('protein_target', e.target.value)} inputMode="numeric" />
               <Input label="Weekly workouts" type="number" placeholder="e.g. 4" value={form.workout_target} onChange={(e) => update('workout_target', e.target.value)} inputMode="numeric" />
@@ -220,7 +268,7 @@ export default function CoachClientProgramPage() {
             {success && <div className="bg-success/10 border border-success/30 rounded-xl px-4 py-3 mt-4"><p className="text-sm text-success">{success}</p></div>}
 
             <Button fullWidth onClick={handleSave} disabled={saving} className="mt-5">
-              {saving ? 'Saving...' : program ? 'Save Changes' : 'Create Program'}
+              {saving ? 'Saving...' : program ? 'Save Changes' : 'Set Targets'}
             </Button>
           </Card>
         </div>

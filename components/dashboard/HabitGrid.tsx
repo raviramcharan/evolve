@@ -32,7 +32,7 @@ function proteinStatus(checkIn: CheckIn): HabitStatus {
 }
 
 function workoutStatus(checkIn: CheckIn, program: Program): HabitStatus {
-  if (checkIn.workouts_completed === null) return 'empty'
+  if (checkIn.workouts_completed === null || program.workout_target === null) return 'empty'
   const ratio = checkIn.workouts_completed / program.workout_target
   if (ratio >= 1) return 'good'
   if (ratio >= 0.5) return 'partial'
