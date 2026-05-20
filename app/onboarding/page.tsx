@@ -46,6 +46,21 @@ function OnboardingForm() {
   const [error, setError] = useState('')
 
   useEffect(() => {
+    async function checkRole() {
+      const supabase = createSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data: profile } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle()
+      if (profile?.role === 'coach') router.replace('/coach/dashboard')
+    }
+    checkRole()
+  }, [router])
+
+  useEffect(() => {
     if (!invite) return
     async function lookupCoach() {
       const supabase = createSupabaseClient()
