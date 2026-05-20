@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Syne, DM_Sans } from 'next/font/google'
 import './globals.css'
-import { MobileNav } from '@/components/layout/MobileNav'
+import { NavWrapper } from '@/components/layout/NavWrapper'
 
 const syne = Syne({
   subsets: ['latin'],
@@ -38,7 +38,7 @@ export default function RootLayout({
         <main className="max-w-lg mx-auto min-h-screen pb-24">
           {children}
         </main>
-        <MobileNav />
+        <NavWrapper />
       </body>
     </html>
   )
