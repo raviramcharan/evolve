@@ -3,6 +3,27 @@ export interface User {
   email: string;
   name: string | null;
   reminder_email: string | null;
+  role: 'coach' | 'client';
+  coach_id: string | null;
+  google_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Coach {
+  id: string;
+  coach_code: string;
+  bio: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CoachNote {
+  id: string;
+  coach_id: string;
+  client_id: string;
+  week_number: number | null;
+  content: string;
   created_at: string;
   updated_at: string;
 }
@@ -19,6 +40,7 @@ export interface Program {
   protein_target: number;
   workout_target: number;
   is_active: boolean;
+  created_by: 'client' | 'coach';
   created_at: string;
   updated_at: string;
 }
@@ -73,6 +95,7 @@ export interface GoalAdjustment {
   protein_target: number | null;
   workout_target: number | null;
   reason: string | null;
+  adjusted_by: 'client' | 'coach';
   created_at: string;
 }
 

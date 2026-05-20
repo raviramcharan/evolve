@@ -1,8 +1,10 @@
+import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { requireAuth } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { CheckInSummary } from '@/components/check-in/CheckInSummary'
 import { Header } from '@/components/layout/Header'
+import { Button } from '@/components/ui/Button'
 import { CheckIn, Program } from '@/types'
 
 interface CheckInDetailPageProps {
@@ -35,6 +37,13 @@ export default async function CheckInDetailPage({ params }: CheckInDetailPagePro
     <div>
       <Header showBack title={`Week ${checkIn.week_number} Check-in`} />
       <div className="px-4 py-5">
+        <div className="flex justify-end mb-4">
+          <Link href={`/check-in/${checkIn.id}/edit`}>
+            <Button variant="ghost" className="text-sm py-2 px-4">
+              Edit
+            </Button>
+          </Link>
+        </div>
         <CheckInSummary checkIn={checkIn as CheckIn} program={program as Program} />
       </div>
     </div>
