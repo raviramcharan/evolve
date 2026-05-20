@@ -10,12 +10,12 @@ export default async function ClientNutritionPage() {
 
   const { data: program } = await supabase
     .from('programs')
-    .select('id')
+    .select('id, nutrition_module_enabled')
     .eq('user_id', user.id)
     .eq('is_active', true)
     .maybeSingle()
 
-  if (!program) {
+  if (!program || program.nutrition_module_enabled === false) {
     return (
       <div>
         <Header title="Nutrition Plan" />

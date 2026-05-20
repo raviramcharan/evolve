@@ -6,10 +6,11 @@ import { Header } from '@/components/layout/Header'
 import { Card } from '@/components/ui/Card'
 import { HabitScoreBadge } from '@/components/ui/Badge'
 import { CheckInSummary } from '@/components/check-in/CheckInSummary'
-import { habitScore, getCurrentWeek, isOnTrack, projectedWeights } from '@/lib/calculations'
+import { ClientMeasurementsTab } from '@/components/coach/measurements/ClientMeasurementsTab'
+import { habitScore, getCurrentWeek, isOnTrack } from '@/lib/calculations'
 import { formatDate, weekLabel } from '@/lib/formatters'
-import { CheckIn, Program } from '@/types'
-import { FileText, ClipboardList, StickyNote, Target, Dumbbell, Utensils } from 'lucide-react'
+import { CheckIn, Program, BodyMeasurement } from '@/types'
+import { ClipboardList, StickyNote, Target, Dumbbell, Utensils, Ruler } from 'lucide-react'
 
 interface Props { params: { id: string } }
 
@@ -40,7 +41,17 @@ export default async function CoachClientDetailPage({ params }: Props) {
     .eq('user_id', client.id)
     .order('week_number', { ascending: false })
 
+  const { data: measurements } = program
+    ? await supabase
+        .from('body_measurements')
+        .select('*')
+        .eq('user_id', client.id)
+        .eq('program_id', program.id)
+        .order('week_number', { ascending: true })
+    : { data: [] }
+
   const allCheckIns: CheckIn[] = checkIns ?? []
+  const allMeasurements: BodyMeasurement[] = (measurements ?? []) as BodyMeasurement[]
   const typedProgram: Program | null = program as Program | null
   const lastCheckIn = allCheckIns[0] ?? null
   const currentWeek = typedProgram ? getCurrentWeek(typedProgram.start_date) : null
@@ -58,6 +69,7 @@ export default async function CoachClientDetailPage({ params }: Props) {
     { href: `/coach/clients/${client.id}/program`, icon: Target, label: 'Program', count: null },
     { href: `/coach/clients/${client.id}/training`, icon: Dumbbell, label: 'Training', count: null },
     { href: `/coach/clients/${client.id}/nutrition`, icon: Utensils, label: 'Nutrition', count: null },
+    { href: `#measurements`, icon: Ruler, label: 'Measurements', count: allMeasurements.length || null },
   ]
 
   return (
@@ -130,6 +142,18 @@ export default async function CoachClientDetailPage({ params }: Props) {
               </div>
             </Link>
           </Card>
+        )}
+
+        {/* Measurements */}
+        {typedProgram && (
+          <div id="measurements">
+            <p className="text-sm font-semibold text-muted mb-3">Body Measurements</p>
+            <Card className="p-0 overflow-hidden">
+              <div className="px-4 py-4">
+                <ClientMeasurementsTab measurements={allMeasurements} />
+              </div>
+            </Card>
+          </div>
         )}
       </div>
     </div>

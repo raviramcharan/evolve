@@ -11,10 +11,12 @@ import { NutritionSection, NutritionData } from '@/components/check-in/Nutrition
 import { TrainingSection, TrainingData } from '@/components/check-in/TrainingSection'
 import { LifestyleSection, LifestyleData } from '@/components/check-in/LifestyleSection'
 import { ReflectionSection, ReflectionData } from '@/components/check-in/ReflectionSection'
-import { Program } from '@/types'
+import { MeasurementSection } from '@/components/check-in/MeasurementSection'
+import { Program, MeasurementKey } from '@/types'
 
-const SECTIONS = ['Nutrition', 'Training', 'Lifestyle', 'Reflection'] as const
-type Section = typeof SECTIONS[number]
+const BASE_SECTIONS = ['Nutrition', 'Training', 'Lifestyle', 'Reflection'] as const
+type BaseSection = typeof BASE_SECTIONS[number]
+type Section = BaseSection | 'Measurements'
 
 interface FormState {
   nutrition: NutritionData
@@ -26,7 +28,6 @@ interface FormState {
 const DEFAULT_STATE: FormState = {
   nutrition: {
     hit_calorie_target: '',
-    avg_daily_calories: '',
     hit_protein_target: '',
     nutrition_sustainability: null,
     drank_alcohol: false,
@@ -57,23 +58,24 @@ const DEFAULT_STATE: FormState = {
 export default function CheckInPage() {
   const router = useRouter()
   const [sectionIndex, setSectionIndex] = useState(0)
+  const [sections, setSections] = useState<Section[]>([...BASE_SECTIONS])
   const [formState, setFormState] = useState<FormState>(DEFAULT_STATE)
+  const [measurements, setMeasurements] = useState<Partial<Record<MeasurementKey, number | null>>>({})
+  const [previousMeasurements, setPreviousMeasurements] = useState<Partial<Record<MeasurementKey, number | null>>>({})
   const [program, setProgram] = useState<Program | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [fetchError, setFetchError] = useState('')
 
-  const currentSection = SECTIONS[sectionIndex]
-  const progress = ((sectionIndex + 1) / SECTIONS.length) * 100
+  const currentSection = sections[sectionIndex]
+  const progress = ((sectionIndex + 1) / sections.length) * 100
 
   useEffect(() => {
     async function fetchProgram() {
       const supabase = createSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/login')
-        return
-      }
+      if (!user) { router.push('/login'); return }
+
       const { data, error } = await supabase
         .from('programs')
         .select('*')
@@ -81,23 +83,32 @@ export default function CheckInPage() {
         .eq('is_active', true)
         .maybeSingle()
 
-      if (error || !data) {
-        setFetchError('No active program found.')
-        return
+      if (error || !data) { setFetchError('No active program found.'); return }
+
+      const prog = data as Program
+      setProgram(prog)
+
+      if (prog.measurements_enabled !== false) {
+        setSections([...BASE_SECTIONS, 'Measurements'])
       }
-      setProgram(data as Program)
+
+      const currentWeek = getCurrentWeek(prog.start_date)
+      if (currentWeek > 1) {
+        const { data: prevM } = await supabase
+          .from('body_measurements')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('program_id', prog.id)
+          .eq('week_number', currentWeek - 1)
+          .maybeSingle()
+        if (prevM) setPreviousMeasurements(prevM)
+      }
     }
     fetchProgram()
   }, [router])
 
-  function updateSection<K extends keyof FormState>(
-    section: K,
-    data: Partial<FormState[K]>
-  ) {
-    setFormState((prev) => ({
-      ...prev,
-      [section]: { ...prev[section], ...data },
-    }))
+  function updateSection<K extends keyof FormState>(section: K, data: Partial<FormState[K]>) {
+    setFormState((prev) => ({ ...prev, [section]: { ...prev[section], ...data } }))
   }
 
   function handleNext() {
@@ -106,7 +117,7 @@ export default function CheckInPage() {
       setError('Current weight is required.')
       return
     }
-    if (sectionIndex < SECTIONS.length - 1) {
+    if (sectionIndex < sections.length - 1) {
       setSectionIndex(sectionIndex + 1)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } else {
@@ -128,11 +139,7 @@ export default function CheckInPage() {
 
     const supabase = createSupabaseClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      setError('Not authenticated')
-      setLoading(false)
-      return
-    }
+    if (!user) { setError('Not authenticated'); setLoading(false); return }
 
     const currentWeek = getCurrentWeek(program.start_date)
     const { nutrition, training, lifestyle, reflection } = formState
@@ -143,7 +150,6 @@ export default function CheckInPage() {
       week_number: currentWeek,
       check_in_date: new Date().toISOString().split('T')[0],
       hit_calorie_target: nutrition.hit_calorie_target || null,
-      avg_daily_calories: nutrition.avg_daily_calories ? parseFloat(nutrition.avg_daily_calories) : null,
       hit_protein_target: nutrition.hit_protein_target || null,
       nutrition_sustainability: nutrition.nutrition_sustainability,
       drank_alcohol: nutrition.drank_alcohol,
@@ -164,14 +170,32 @@ export default function CheckInPage() {
       overall_feeling: reflection.overall_feeling,
     }
 
-    const { error: upsertError } = await supabase
+    const { data: newCheckIn, error: upsertError } = await supabase
       .from('check_ins')
       .upsert(payload, { onConflict: 'user_id,program_id,week_number' })
+      .select('id')
+      .single()
 
-    if (upsertError) {
-      setError(upsertError.message)
-      setLoading(false)
-      return
+    if (upsertError) { setError(upsertError.message); setLoading(false); return }
+
+    const hasAnyMeasurement = Object.values(measurements).some((v) => v !== null && v !== undefined)
+    if (hasAnyMeasurement && program.measurements_enabled !== false && newCheckIn?.id) {
+      await supabase.from('body_measurements').upsert({
+        user_id: user.id,
+        program_id: program.id,
+        check_in_id: newCheckIn.id,
+        week_number: currentWeek,
+        measured_at: new Date().toISOString().split('T')[0],
+        waist_cm:       measurements.waist_cm       ?? null,
+        chest_cm:       measurements.chest_cm       ?? null,
+        hips_cm:        measurements.hips_cm        ?? null,
+        left_arm_cm:    measurements.left_arm_cm    ?? null,
+        right_arm_cm:   measurements.right_arm_cm   ?? null,
+        left_thigh_cm:  measurements.left_thigh_cm  ?? null,
+        right_thigh_cm: measurements.right_thigh_cm ?? null,
+        neck_cm:        measurements.neck_cm        ?? null,
+        shoulders_cm:   measurements.shoulders_cm   ?? null,
+      }, { onConflict: 'user_id,program_id,week_number' })
     }
 
     router.push('/dashboard')
@@ -191,8 +215,8 @@ export default function CheckInPage() {
       <div className="px-4 py-5">
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
-            <div className="flex gap-1.5">
-              {SECTIONS.map((s, i) => (
+            <div className="flex flex-wrap gap-1.5">
+              {sections.map((s, i) => (
                 <button
                   key={s}
                   type="button"
@@ -215,28 +239,27 @@ export default function CheckInPage() {
 
         <div className="mb-6">
           {currentSection === 'Nutrition' && (
-            <NutritionSection
-              data={formState.nutrition}
-              onChange={(d) => updateSection('nutrition', d)}
-            />
+            <NutritionSection data={formState.nutrition} onChange={(d) => updateSection('nutrition', d)} />
           )}
           {currentSection === 'Training' && (
-            <TrainingSection
-              data={formState.training}
-              onChange={(d) => updateSection('training', d)}
-            />
+            <TrainingSection data={formState.training} onChange={(d) => updateSection('training', d)} />
           )}
           {currentSection === 'Lifestyle' && (
-            <LifestyleSection
-              data={formState.lifestyle}
-              onChange={(d) => updateSection('lifestyle', d)}
-            />
+            <LifestyleSection data={formState.lifestyle} onChange={(d) => updateSection('lifestyle', d)} />
           )}
           {currentSection === 'Reflection' && (
-            <ReflectionSection
-              data={formState.reflection}
-              onChange={(d) => updateSection('reflection', d)}
-            />
+            <ReflectionSection data={formState.reflection} onChange={(d) => updateSection('reflection', d)} />
+          )}
+          {currentSection === 'Measurements' && (
+            <div>
+              <h2 className="text-lg font-semibold text-text mb-1">Body Measurements</h2>
+              <p className="text-sm text-muted mb-6">Optional — log what you have. All in centimetres.</p>
+              <MeasurementSection
+                values={measurements}
+                previousValues={previousMeasurements}
+                onChange={(key, value) => setMeasurements((prev) => ({ ...prev, [key]: value }))}
+              />
+            </div>
           )}
         </div>
 
@@ -260,7 +283,7 @@ export default function CheckInPage() {
           >
             {loading
               ? 'Saving...'
-              : sectionIndex === SECTIONS.length - 1
+              : sectionIndex === sections.length - 1
               ? 'Save Check-in'
               : 'Continue'}
           </Button>

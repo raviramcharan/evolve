@@ -51,6 +51,7 @@ export function LifestyleSection({ data, onChange }: LifestyleSectionProps) {
         value={data.stress_level}
         onChange={(v) => onChange({ stress_level: v })}
         anchors={['Very low', 'Very high']}
+        reverseEmojis
       />
 
       <div>

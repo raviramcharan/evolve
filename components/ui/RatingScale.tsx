@@ -5,11 +5,13 @@ interface RatingScaleProps {
   onChange: (value: number) => void
   label?: string
   anchors?: [string, string]
+  reverseEmojis?: boolean
 }
 
 const EMOJIS = ['😞', '😔', '😐', '😊', '😁']
 
-export function RatingScale({ value, onChange, label, anchors }: RatingScaleProps) {
+export function RatingScale({ value, onChange, label, anchors, reverseEmojis }: RatingScaleProps) {
+  const emojis = reverseEmojis ? [...EMOJIS].reverse() : EMOJIS
   return (
     <div className="flex flex-col gap-2">
       {label && <label className="text-sm text-muted font-medium">{label}</label>}
@@ -27,7 +29,7 @@ export function RatingScale({ value, onChange, label, anchors }: RatingScaleProp
                   : 'border-border bg-surface hover:border-muted'
               }`}
             >
-              <span className="text-lg leading-none">{EMOJIS[n - 1]}</span>
+              <span className="text-lg leading-none">{emojis[n - 1]}</span>
               <span className={`text-xs font-medium ${value === n ? 'text-accent' : 'text-muted'}`}>{n}</span>
             </button>
           ))}

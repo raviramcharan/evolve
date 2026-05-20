@@ -10,12 +10,12 @@ export default async function ClientTrainingPage() {
 
   const { data: program } = await supabase
     .from('programs')
-    .select('id')
+    .select('id, training_module_enabled')
     .eq('user_id', user.id)
     .eq('is_active', true)
     .maybeSingle()
 
-  if (!program) {
+  if (!program || program.training_module_enabled === false) {
     return (
       <div>
         <Header title="Training Plan" />

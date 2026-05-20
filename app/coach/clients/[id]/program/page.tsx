@@ -26,6 +26,9 @@ interface ProgramForm {
   calorie_target: string
   protein_target: string
   workout_target: string
+  training_module_enabled: boolean
+  nutrition_module_enabled: boolean
+  measurements_enabled: boolean
 }
 
 const today = new Date().toISOString().split('T')[0]
@@ -54,6 +57,9 @@ export default function CoachClientProgramPage() {
     calorie_target: '',
     protein_target: '',
     workout_target: '',
+    training_module_enabled: true,
+    nutrition_module_enabled: true,
+    measurements_enabled: true,
   })
   const [adjustReason, setAdjustReason] = useState('')
   const [loading, setLoading] = useState(true)
@@ -94,6 +100,9 @@ export default function CoachClientProgramPage() {
           calorie_target: p.calorie_target?.toString() ?? '',
           protein_target: p.protein_target?.toString() ?? '',
           workout_target: p.workout_target?.toString() ?? '',
+          training_module_enabled: p.training_module_enabled !== false,
+          nutrition_module_enabled: p.nutrition_module_enabled !== false,
+          measurements_enabled: p.measurements_enabled !== false,
         })
       }
       setLoading(false)
@@ -101,7 +110,7 @@ export default function CoachClientProgramPage() {
     fetchData()
   }, [clientId, router])
 
-  function update(field: keyof ProgramForm, value: string) {
+  function update(field: keyof ProgramForm, value: string | boolean) {
     setForm((prev) => ({ ...prev, [field]: value }))
     setError('')
     setSuccess('')
@@ -129,6 +138,9 @@ export default function CoachClientProgramPage() {
           protein_target: parseInt(protein_target, 10),
           workout_target: parseInt(workout_target, 10),
           goal_weight: parseFloat(goal_weight),
+          training_module_enabled: form.training_module_enabled,
+          nutrition_module_enabled: form.nutrition_module_enabled,
+          measurements_enabled: form.measurements_enabled,
           updated_at: new Date().toISOString(),
         })
         .eq('id', program.id)
@@ -161,6 +173,9 @@ export default function CoachClientProgramPage() {
         calorie_target: parseInt(calorie_target, 10),
         protein_target: parseInt(protein_target, 10),
         workout_target: parseInt(workout_target, 10),
+        training_module_enabled: form.training_module_enabled,
+        nutrition_module_enabled: form.nutrition_module_enabled,
+        measurements_enabled: form.measurements_enabled,
         is_active: true,
         created_by: 'coach',
       })
@@ -257,6 +272,38 @@ export default function CoachClientProgramPage() {
               <Input label="Daily calories (kcal)" type="number" placeholder="e.g. 1900" value={form.calorie_target} onChange={(e) => update('calorie_target', e.target.value)} inputMode="numeric" />
               <Input label="Daily protein (g)" type="number" placeholder="e.g. 150" value={form.protein_target} onChange={(e) => update('protein_target', e.target.value)} inputMode="numeric" />
               <Input label="Weekly workouts" type="number" placeholder="e.g. 4" value={form.workout_target} onChange={(e) => update('workout_target', e.target.value)} inputMode="numeric" />
+
+              {/* Module toggles */}
+              <div className="flex flex-col gap-0 border-t border-border pt-4 mt-1">
+                {(
+                  [
+                    { field: 'training_module_enabled', label: 'Training Plan', desc: 'Show training plan tab for this client' },
+                    { field: 'nutrition_module_enabled', label: 'Nutrition Plan', desc: 'Show nutrition plan tab for this client' },
+                    { field: 'measurements_enabled', label: 'Body Measurements', desc: 'Include measurement section in weekly check-in' },
+                  ] as const
+                ).map(({ field, label, desc }) => (
+                  <div key={field} className="flex items-center justify-between py-3 border-b border-border last:border-0">
+                    <div>
+                      <p className="text-sm font-medium text-text">{label}</p>
+                      <p className="text-xs text-muted">{desc}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => update(field, !form[field])}
+                      className={`w-11 h-6 rounded-full transition-colors shrink-0 ${
+                        form[field] ? 'bg-accent' : 'bg-border'
+                      }`}
+                    >
+                      <span
+                        className={`block w-4 h-4 bg-white rounded-full mx-1 transition-transform ${
+                          form[field] ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
               {program && (
                 <div className="flex flex-col gap-1.5">
                   <label className="text-sm text-muted font-medium">Reason for adjustment (optional)</label>

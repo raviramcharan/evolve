@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/Button'
 
 export interface NutritionData {
   hit_calorie_target: 'yes' | 'mostly' | 'no' | ''
-  avg_daily_calories: string
   hit_protein_target: 'yes' | 'mostly' | 'no' | ''
   nutrition_sustainability: number | null
   drank_alcohol: boolean
@@ -48,15 +47,6 @@ export function NutritionSection({ data, onChange }: NutritionSectionProps) {
           ))}
         </div>
       </div>
-
-      <Input
-        label="Average daily calories"
-        type="number"
-        placeholder="e.g. 1850"
-        value={data.avg_daily_calories}
-        onChange={(e) => onChange({ avg_daily_calories: e.target.value })}
-        inputMode="numeric"
-      />
 
       <div>
         <p className="text-sm text-muted font-medium mb-2">Did you hit your protein target?</p>

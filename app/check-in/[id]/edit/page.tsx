@@ -25,7 +25,6 @@ function checkInToFormState(c: CheckIn): FormState {
   return {
     nutrition: {
       hit_calorie_target: c.hit_calorie_target ?? '',
-      avg_daily_calories: c.avg_daily_calories?.toString() ?? '',
       hit_protein_target: c.hit_protein_target ?? '',
       nutrition_sustainability: c.nutrition_sustainability,
       drank_alcohol: c.drank_alcohol,
@@ -143,7 +142,6 @@ export default function CheckInEditPage() {
       week_number: checkIn.week_number,
       check_in_date: checkIn.check_in_date,
       hit_calorie_target: nutrition.hit_calorie_target || null,
-      avg_daily_calories: nutrition.avg_daily_calories ? parseFloat(nutrition.avg_daily_calories) : null,
       hit_protein_target: nutrition.hit_protein_target || null,
       nutrition_sustainability: nutrition.nutrition_sustainability,
       drank_alcohol: nutrition.drank_alcohol,

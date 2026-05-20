@@ -44,6 +44,9 @@ export interface Program {
   workout_target: number | null;
   is_active: boolean;
   created_by: 'client' | 'coach';
+  training_module_enabled: boolean;
+  nutrition_module_enabled: boolean;
+  measurements_enabled: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -174,4 +177,47 @@ export interface MealFood {
   protein_g: number
   carbs_g: number
   fat_g: number
-};
+}
+
+export interface BodyMeasurement {
+  id: string
+  user_id: string
+  program_id: string
+  check_in_id: string
+  week_number: number
+  measured_at: string
+  waist_cm: number | null
+  chest_cm: number | null
+  hips_cm: number | null
+  left_arm_cm: number | null
+  right_arm_cm: number | null
+  left_thigh_cm: number | null
+  right_thigh_cm: number | null
+  neck_cm: number | null
+  shoulders_cm: number | null
+  created_at: string
+  updated_at: string
+}
+
+export const MEASUREMENT_SITES = [
+  { key: 'waist_cm',        label: 'Waist',        group: 'Core',        unit: 'cm' },
+  { key: 'hips_cm',         label: 'Hips',         group: 'Core',        unit: 'cm' },
+  { key: 'chest_cm',        label: 'Chest',        group: 'Upper Body',  unit: 'cm' },
+  { key: 'shoulders_cm',    label: 'Shoulders',    group: 'Upper Body',  unit: 'cm' },
+  { key: 'neck_cm',         label: 'Neck',         group: 'Upper Body',  unit: 'cm' },
+  { key: 'left_arm_cm',     label: 'Left Arm',     group: 'Upper Body',  unit: 'cm' },
+  { key: 'right_arm_cm',    label: 'Right Arm',    group: 'Upper Body',  unit: 'cm' },
+  { key: 'left_thigh_cm',   label: 'Left Thigh',   group: 'Lower Body',  unit: 'cm' },
+  { key: 'right_thigh_cm',  label: 'Right Thigh',  group: 'Lower Body',  unit: 'cm' },
+] as const
+
+export type MeasurementKey = typeof MEASUREMENT_SITES[number]['key']
+
+export const DECREASING_IS_GOOD: MeasurementKey[] = [
+  'waist_cm', 'hips_cm', 'neck_cm',
+]
+
+export const INCREASING_IS_GOOD: MeasurementKey[] = [
+  'chest_cm', 'shoulders_cm', 'left_arm_cm', 'right_arm_cm',
+  'left_thigh_cm', 'right_thigh_cm',
+]
